@@ -6,15 +6,28 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
+  background: #05080f;   /* dark by default — welcome screen / non-AR state */
   color: var(--text);
   font-family: var(--font-body);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* The A-Frame scene canvas sits behind everything. */
-a-scene { position: fixed; inset: 0; z-index: 0; }
+/* AR mode (set by app.js when the user taps ENTER): make the BODY transparent so
+   MindAR's camera <video> shows through as the live background. <html> stays
+   dark as the ultimate fallback that sits BEHIND the video, never over it. */
+body.ar-active { background: transparent !important; }
+
+/* Explicit AR layer stack (overrides MindAR's inline z-index:-2 on the video):
+     camera video (0)  <  AR board canvas (1)  <  Layer B UI (10)
+   The video stays the bottom background; the transparent board canvas overlays
+   it; the screen UI sits on top. Only z-index is overridden — MindAR keeps its
+   own position/size that centre-covers the viewport. */
+video { z-index: 0 !important; }
+
+/* AR scene canvas: above the camera video, below Layer B. Its WebGL clear is
+   forced transparent in app.js so the holographic board overlays the video. */
+a-scene { position: fixed; inset: 0; z-index: 1; }
 
 /* Layer B overlay — pass clicks through to the canvas except on controls. */
 #ui {

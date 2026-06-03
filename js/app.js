@@ -6,8 +6,16 @@
 (function () {
   'use strict';
 
+  // Force the WebGL canvas clear colour to fully transparent so the holographic
+  // board overlays the live camera video instead of an opaque black fill.
+  function makeCanvasTransparent(scene) {
+    if (scene && scene.renderer) scene.renderer.setClearColor(0x000000, 0);
+  }
+
   // Build the board, wire UI, prepare AR tracking (camera NOT started yet).
   function start() {
+    var scene = document.querySelector('a-scene');
+    makeCanvasTransparent(scene);
     Board.build(document.getElementById('board-anchor'));
     Board.onPitClick(Modules.onPitClicked);
     AR.init();
@@ -24,8 +32,14 @@
   // Start MindAR's camera + tracking (autoStart is off, so this is the trigger).
   function startAR(scene) {
     var sys = scene.systems && scene.systems['mindar-image-system'];
-    if (sys) { try { sys.start(); } catch (e) { /* arError surfaces in ar.js */ } }
-    else { scene.addEventListener('loaded', function () { startAR(scene); }); }
+    if (sys) {
+      try { sys.start(); } catch (e) { /* arError surfaces in ar.js */ }
+      // Re-assert canvas transparency after the AR renderer spins up.
+      makeCanvasTransparent(scene);
+      setTimeout(function () { makeCanvasTransparent(scene); }, 800);
+    } else {
+      scene.addEventListener('loaded', function () { startAR(scene); });
+    }
   }
 
   // Splash → ENTER starts the camera (must be a user gesture for permissions).
@@ -37,6 +51,7 @@
     btn.addEventListener('click', function () {
       if (entered) return;
       entered = true;
+      document.body.classList.add('ar-active'); // body → transparent so camera shows
       startAR(scene);
       splash.classList.add('leaving');
       setTimeout(function () { splash.hidden = true; }, 600);
