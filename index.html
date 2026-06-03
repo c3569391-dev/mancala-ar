@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>AR Mancala — Learning Assistant</title>
+
+  <!-- Fonts: Orbitron/Audiowide (display) + Exo 2/Rajdhani (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Audiowide&family=Exo+2:wght@400;600;700&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet" />
+
+  <!-- A-Frame + MindAR image tracking (CDN, no build step) -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/ui.css" />
+  <link rel="stylesheet" href="css/splash.css" />
+</head>
+<body>
+
+  <!-- ================= Splash / welcome screen ================= -->
+  <!-- Shown first; tapping ENTER starts the camera + AR (user-gesture trigger). -->
+  <div id="splash">
+    <div class="splash-inner">
+      <div class="splash-emblem">AR</div>
+      <h1 class="splash-title">AR Mancala<br />Learning Assistant</h1>
+      <p class="splash-tagline">Learn Congkak with Augmented Reality</p>
+      <button id="start-btn">ENTER</button>
+      <p class="splash-note">Tap ENTER, then point your camera at the Congkak card</p>
+    </div>
+  </div>
+
+  <!-- ================= Layer A: AR scene (holographic board) =================
+       MindAR provides the camera feed + image tracking. The #board-anchor lives
+       INSIDE the image target, so the whole holographic board is anchored to and
+       moves with the physical Mancala board. MindAR shows the target subtree only
+       while the marker is tracked, which hides Layer A automatically when lost.
+       (No background colour, so the live camera shows through.) -->
+  <a-scene embedded
+           mindar-image="imageTargetSrc: assets/targets.mind; maxTrack: 1; autoStart: false; uiLoading: no; uiScanning: no; uiError: no"
+           color-space="sRGB"
+           vr-mode-ui="enabled: false"
+           device-orientation-permission-ui="enabled: false"
+           renderer="alpha: true; colorManagement: true; antialias: true">
+
+    <!-- AR camera (pose driven by MindAR). Pit taps are raycast manually in board3d.js. -->
+    <a-camera position="0 0 0" look-controls="false" wasd-controls="false"></a-camera>
+
+    <a-entity light="type: ambient; color: #bcd8ff; intensity: 0.95"></a-entity>
+    <a-entity light="type: point; intensity: 0.6; distance: 8" position="0 0.4 1.5"></a-entity>
+
+    <!-- Image-target anchor (placeholder example .mind; swap for your board later). -->
+    <a-entity id="target" mindar-image-target="targetIndex: 0">
+      <!-- Layer A board, scaled to roughly overlay the marker; floats just above it. -->
+      <a-entity id="board-anchor" position="0 0 0.05" scale="0.55 0.55 0.55"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <!-- ================= Layer B: screen-fixed UI ================= -->
+  <div id="ui">
+    <header id="topbar">
+      <div id="title-wrap">
+        <h1>AR MANCALA</h1>
+        <span id="subtitle">Learning Assistant</span>
+      </div>
+      <button id="home-btn">HOME</button>
+    </header>
+
+    <!-- Shown while scanning / when the AR target is lost. -->
+    <div id="camera-hint">Point your camera at the Mancala board</div>
+
+    <div id="bottom">
+      <div id="panel" class="panel"></div>
+      <div id="options" class="options hidden"></div>
+      <nav id="mainnav">
+        <button data-module="rules">Rules</button>
+        <button data-module="demo">Demo</button>
+        <button data-module="quiz">Quiz</button>
+        <button data-module="freeplay">Free Play</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- App scripts (plain JS, no build step) -->
+  <script src="js/engine.js"></script>
+  <script src="js/presets.js"></script>
+  <script src="js/board3d.js"></script>
+  <script src="js/animate.js"></script>
+  <script src="js/modules.js"></script>
+  <script src="js/ar.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+/* ui.css — Layer B: the screen-fixed UI that floats above the AR scene.
+   Mobile-first / portrait, dark holographic tech style. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The A-Frame scene canvas sits behind everything. */
+a-scene { position: fixed; inset: 0; z-index: 0; }
+
+/* Layer B overlay — pass clicks through to the canvas except on controls. */
+#ui {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top, 12px) 14px env(safe-area-inset-bottom, 14px);
+  pointer-events: none;
+}
+#ui > * { pointer-events: auto; }
+
+/* ---- top bar ---------------------------------------------------------- */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+#title-wrap { display: flex; flex-direction: column; line-height: 1; }
+#topbar h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: var(--glow-cyan);
+}
+#subtitle {
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+#home-btn {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  background: rgba(61, 240, 255, 0.08);
+  border: 1px solid var(--panel-brd);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+/* ---- camera-lost hint (used in Stage 4) ------------------------------- */
+#camera-hint {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(5, 8, 15, 0.78);
+  border: 1px solid var(--panel-brd);
+  border-radius: 14px;
+  padding: 16px 22px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-align: center;
+  color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+  pointer-events: none;
+}
+#camera-hint[hidden] { display: none; }
+
+/* ---- bottom stack: panel + options + nav ------------------------------ */
+#bottom { display: flex; flex-direction: column; gap: 12px; }
+
+/* content / feedback panel */
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-brd);
+  border-radius: 16px;
+  padding: 14px 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.45), inset 0 0 22px rgba(61, 240, 255, 0.05);
+  max-height: 38vh;
+  overflow-y: auto;
+}
+.panel.hidden { display: none; }
+.panel h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan);
+}
+.panel p { margin: 6px 0; font-size: 13.5px; line-height: 1.5; color: var(--text); }
+.panel ul { margin: 6px 0; padding-left: 18px; }
+.panel li { font-size: 13px; line-height: 1.55; margin: 4px 0; }
+.panel b { color: #fff; }
+.panel .hint { font-size: 12px; color: var(--text-dim); }
+
+/* contextual sub-buttons / quiz options */
+.options { display: flex; flex-wrap: wrap; gap: 10px; }
+.options.hidden { display: none; }
+.opt {
+  flex: 1 1 auto;
+  min-width: 120px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  background: rgba(61, 240, 255, 0.07);
+  border: 1px solid var(--panel-brd);
+  border-radius: 12px;
+  padding: 13px 14px;
+  transition: transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.opt:active { transform: scale(0.97); }
+.opt.blue   { border-color: var(--blue); color: var(--blue); box-shadow: var(--glow-blue); }
+.opt.red    { border-color: var(--red);  color: var(--red);  box-shadow: var(--glow-red); }
+.opt.correct { border-color: var(--gold); color: #1a1303; background: var(--gold); }
+.opt.wrong   { border-color: var(--red);  color: #fff;       background: rgba(255, 59, 92, 0.35); }
+.opt:disabled { opacity: 0.75; }
+.opt.small { flex: 1 1 0; min-width: 0; font-size: 12.5px; padding: 10px; }
+.retry-row { display: flex; gap: 10px; width: 100%; }
+
+/* ---- main navigation -------------------------------------------------- */
+#mainnav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+#mainnav button {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  background: rgba(10, 20, 38, 0.7);
+  border: 1px solid rgba(61, 240, 255, 0.22);
+  border-radius: 14px;
+  padding: 14px 4px;
+  transition: all 0.15s ease;
+}
+#mainnav button:active { transform: scale(0.96); }
+#mainnav button.active {
+  color: #06121e;
+  background: linear-gradient(180deg, var(--cyan), var(--blue));
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+@media (min-width: 520px) {
+  #ui { max-width: 480px; margin: 0 auto; }
+}
