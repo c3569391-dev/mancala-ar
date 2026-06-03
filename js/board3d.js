@@ -191,10 +191,11 @@ window.Board = (function () {
     hit.__pitIndex = i;
     clickables.push(hit);
 
-    // count label above the pit
+    // count label above the pit — rendered in FRONT (high z) so the transparent
+    // hit-area / ring never clip it, and lifted clear of the ring.
     labels[i] = E('a-text', {
       value: '4', align: 'center', color: '#Eaffff', width: 1.4,
-      position: '0 ' + (PITR + 0.03) + ' 0.02'
+      position: '0 ' + (PITR + 0.05) + ' 0.06'
     }, g);
 
     groups[i] = E('a-entity', { position: '0 0 0' }, g); // seeds container
@@ -214,7 +215,7 @@ window.Board = (function () {
 
     labels[i] = E('a-text', {
       value: '0', align: 'center', color: '#ffffff', width: 2.2, 'font-size': '6',
-      position: '0 0.30 0.02'
+      position: '0 0.30 0.06'
     }, g);
 
     groups[i] = E('a-entity', { position: '0 0 0' }, g);
