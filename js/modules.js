@@ -10,9 +10,10 @@ window.Modules = (function () {
   var Presets = window.MancalaPresets;
 
   // current interaction mode + transient state
-  var mode = 'main';          // main | rules | demo | demoCapture | demoExtra | quiz | freeplay
+  var mode = 'main';          // main | rules | demo | demoCapture | demoExtra | demoExtraManual | quiz | freeplay
   var demoState = null;       // preset-derived state for a running demo
-  var demoHighlight = -1;
+  var demoHighlight = -1;     // the single pit to tap (guided demo steps)
+  var demoMoves = [];         // every tappable pit (free choice, e.g. extra-turn step)
   var game = null;            // live Free Play state
   var busy = false;           // lock taps while an animation plays
 
@@ -113,6 +114,7 @@ window.Modules = (function () {
     Board.renderState(demoState.board);
     Board.showArrows(true);
     Board.setHighlights(p.highlight, p.current);
+    Board.showTapHint(demoHighlight);
     setPanel(intro);
     setOptions([{ label: 'Back to Demos', onClick: showDemo }]);
   }
@@ -131,6 +133,7 @@ window.Modules = (function () {
   async function playDemo(pit) {
     busy = true;
     Board.clearHighlights();
+    Board.hideTapHint();
     var pre = demoState.board.slice();
     var res = Engine.applyMove(demoState, pit);
     await Animate.playEvents(res.events, pre, res.state.board);
@@ -141,14 +144,52 @@ window.Modules = (function () {
       setPanel(
         '<h2 class="cgold">Capture Triggered!</h2>' +
         '<p>The last seed landed in an empty pit on Player A\'s own side. Player A takes that seed plus every seed in the opposite pit and moves them into the blue store.</p>');
-    } else {
-      setPanel(
-        '<h2 class="ccyan">Extra Turn!</h2>' +
-        '<p>The last seed landed in Player A\'s own store, so Player A gets to move again. Landing in your opponent\'s store never happens — you always skip it.</p>');
+      setOptions([
+        { label: 'Replay', onClick: runCaptureDemo },
+        { label: 'Back to Demos', onClick: showDemo }
+      ]);
+      return;
     }
-    var replay = mode === 'demoCapture' ? runCaptureDemo : runExtraTurnDemo;
+
+    // Extra Turn demo: the learner just SAW the extra turn being earned. Now hand
+    // control back so they take that extra turn themselves — actually tapping a
+    // second move drives home that the same player goes again.
+    beginExtraTurnManual();
+  }
+
+  // Stage 2 of the Extra Turn demo: Player A still has the move (the engine left
+  // current = 'A'). Under the extra-turn rule the player may sow from ANY of their
+  // own non-empty pits, so light up every legal pit and let the learner choose.
+  function beginExtraTurnManual() {
+    mode = 'demoExtraManual';
+    demoMoves = Engine.legalMoves(demoState);   // all of Player A's non-empty pits
+    setPanel(
+      '<h2 class="ccyan">Extra Turn earned!</h2>' +
+      '<p>Your last seed landed in Player A\'s own store, so Player A moves <b>again</b>. ' +
+      'Now <b>you</b> take the extra turn — tap <b>any</b> glowing pit on the blue side to sow once more.</p>');
+    if (demoMoves.length) {
+      Board.setHighlights(demoMoves, 'A');
+      Board.showTapHints(demoMoves);
+    }
+    setOptions([{ label: 'Back to Demos', onClick: showDemo }]);
+  }
+
+  async function playExtraTurnManual(pit) {
+    busy = true;
+    Board.clearHighlights();
+    Board.hideTapHint();
+    var pre = demoState.board.slice();
+    var res = Engine.applyMove(demoState, pit);
+    await Animate.playEvents(res.events, pre, res.state.board);
+    demoState = res.state;
+    busy = false;
+
+    setPanel(
+      '<h2 class="cgold">Nice — that was your extra turn!</h2>' +
+      '<p>You just sowed a second time in the same turn. Whenever your last seed ' +
+      'lands in your own store, you keep going — that\'s the extra-turn rule.</p>');
     setOptions([
-      { label: 'Replay', onClick: replay },
+      { label: 'Replay', onClick: runExtraTurnDemo },
       { label: 'Back to Demos', onClick: showDemo }
     ]);
   }
@@ -279,6 +320,8 @@ window.Modules = (function () {
     if (busy) return;
     if (mode === 'demoCapture' || mode === 'demoExtra') {
       if (i === demoHighlight) playDemo(i);
+    } else if (mode === 'demoExtraManual') {
+      if (demoMoves.indexOf(i) >= 0) playExtraTurnManual(i);
     } else if (mode === 'freeplay') {
       playFreeMove(i);
     }

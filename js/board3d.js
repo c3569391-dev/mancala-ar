@@ -17,6 +17,14 @@ window.Board = (function () {
   var GOLD = '#FFD46B';   // neutral seeds
   var CYAN = '#3DF0FF';   // accents / arrows
 
+  // Highlight glow tuned so BLUE and RED pits read equally bright. The red hue is
+  // perceptually dimmer than the cyan-blue at equal emissive, so it gets a
+  // lifted colour AND a higher emissive intensity to match the blue side.
+  var HI_BLUE = '#27B6FF';  // bright highlight blue (same crisp cyan-blue hue)
+  var HI_RED = '#FF5E78';   // bright highlight red, lifted to match blue's brightness
+  function hiColor(i) { return sideColor(i) === RED ? HI_RED : HI_BLUE; }
+  function hiGlow(i)  { return sideColor(i) === RED ? 2.6 : 2.0; }
+
   // ---- geometry ---------------------------------------------------------
   var ROWY = 0.20;        // top/bottom row height
   var STOREX = 0.82;      // store distance from centre
@@ -76,6 +84,97 @@ window.Board = (function () {
     return g;
   }
 
+  // Rounded "button-style" chip that mirrors the bottom nav buttons (Rules /
+  // Demo / Quiz / Free Play): a dark rounded background + coloured border + crisp
+  // display-font text. Drawn to a canvas and used as a texture so the corners are
+  // genuinely rounded and the text stays legible over the live camera feed. Used
+  // for the player name labels AND every Demo hint/feedback, so they all share
+  // one look. The text/colour can be re-set at runtime (for the notifications).
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function makeChip(parent, pos, planeW, canvasW, canvasH) {
+    var W = canvasW || 512, H = canvasH || 150, pad = 10, radius = 36;
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+
+    var plane = E('a-plane', {
+      position: pos, width: planeW, height: planeW * H / W,
+      material: 'shader: flat; transparent: true; side: double; color: #ffffff'
+    }, parent);
+
+    var state = { text: '', color: '#ffffff', font: 70 };
+
+    function draw() {
+      var ctx = cv.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+      // dark rounded background (matches the nav button fill)
+      roundRect(ctx, pad, pad, W - 2 * pad, H - 2 * pad, radius);
+      ctx.fillStyle = 'rgba(10, 20, 38, 0.92)';
+      ctx.fill();
+      // coloured border + soft outer glow
+      ctx.lineWidth = 9;
+      ctx.strokeStyle = state.color;
+      ctx.shadowColor = state.color;
+      ctx.shadowBlur = 24;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // display-font text; shrink to fit so long labels never clip
+      var maxW = W - 2 * pad - 36, fs = state.font;
+      ctx.font = '700 ' + fs + 'px Orbitron, Audiowide, sans-serif';
+      while (fs > 22 && ctx.measureText(state.text).width > maxW) {
+        fs -= 2;
+        ctx.font = '700 ' + fs + 'px Orbitron, Audiowide, sans-serif';
+      }
+      ctx.fillStyle = state.color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(state.text, W / 2, H / 2 + 4);
+
+      var m = plane.getObject3D('mesh');
+      if (m && m.material && m.material.map) m.material.map.needsUpdate = true;
+    }
+
+    function attach() {
+      var mesh = plane.getObject3D('mesh');
+      if (!mesh) { plane.addEventListener('loaded', attach, { once: true }); return; }
+      var THREE = window.AFRAME.THREE;
+      var tex = new THREE.CanvasTexture(cv);
+      if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      mesh.material.map = tex;
+      mesh.material.needsUpdate = true;
+      draw();
+    }
+    attach();
+    // redraw once the web fonts have loaded so we use Orbitron, not a fallback
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+
+    return {
+      el: plane,
+      set: function (text, color, font) {
+        state.text = text;
+        if (color) state.color = color;
+        if (font) state.font = font;
+        draw();
+      }
+    };
+  }
+
+  // Convenience: a one-shot chip with fixed text (player name labels).
+  function chipLabel(parent, text, color, pos, planeW) {
+    var chip = makeChip(parent, pos, planeW, 512, 150);
+    chip.set(text, color, 70);
+    return chip.el;
+  }
+
   // ---- state ------------------------------------------------------------
   var anchor = null;
   var groups = [];        // groups[i] holds the seeds + count label for pit i
@@ -83,6 +182,7 @@ window.Board = (function () {
   var rings = [];         // rings[i] pit/store outline (for highlighting)
   var arrows = null;      // CCW direction chevrons container
   var notif = null;       // floating notification text
+  var tapHints = [];      // "TAP" arrows, one per pit the learner may tap
   var pitClickCb = null;
   var clickables = [];    // pit hit-areas, raycast manually for taps
 
@@ -124,14 +224,48 @@ window.Board = (function () {
     buildArrows();
     buildAvatars();
 
-    // Reusable floating notification (hidden by default).
-    notif = E('a-text', {
-      value: '', align: 'center', color: GOLD, width: 2.6,
-      position: '0 0.50 0.08', visible: 'false',
-      'font-size': '4'
-    }, anchor);
+    // Reusable floating notification chip (same rounded box + display font as the
+    // bottom UI). Sized + centred to sit in the clear column between the two name
+    // chips so the solid boxes never collide. Text/colour set per event.
+    notif = makeChip(anchor, '0 0.55 0.12', 0.82, 760, 210);
+    notif.el.setAttribute('visible', 'false');
 
     setupClicking();
+  }
+
+  // "TAP" indicator: a bright down-pointing arrow + label that hovers above a
+  // pit the learner may tap, so the glowing pits are never ambiguous. One is
+  // created per tappable pit (the extra-turn step offers several), and each bobs
+  // to draw the eye. Built on demand and torn down together via hideTapHint().
+  function makeTapHint(i) {
+    var p = POS[i];
+    var hint = E('a-entity', { position: p.x + ' ' + (p.y + 0.21) + ' 0.10' }, anchor);
+    var inner = E('a-entity', { position: '0 0 0' }, hint);
+    // "TAP" rendered as a small cyan chip so it matches the bottom UI / labels.
+    // Kept narrow so several side-by-side hints (extra-turn step) don't overlap.
+    var chip = makeChip(inner, '0 0.135 0.001', 0.205, 256, 150);
+    chip.set('TAP', CYAN, 78);
+    // a-triangle points up by default; rotate 180° on Z so it points down at the pit
+    E('a-triangle', {
+      position: '0 0 0', rotation: '0 0 180', scale: '0.055 0.05 0.05',
+      material: 'shader: flat; color: ' + CYAN + '; transparent: true; opacity: 0.95; side: double'
+    }, inner);
+    inner.setAttribute('animation__bob',
+      'property: position; dir: alternate; loop: true; dur: 600; to: 0 0.035 0; easing: easeInOutSine');
+    return hint;
+  }
+
+  // Show a TAP arrow over each given pit (single pit: pass [i] or use showTapHint).
+  function showTapHints(indices) {
+    hideTapHint();
+    (indices || []).forEach(function (i) {
+      if (POS[i]) tapHints.push(makeTapHint(i));
+    });
+  }
+  function showTapHint(i) { showTapHints([i]); }
+  function hideTapHint() {
+    tapHints.forEach(function (h) { if (h.parentNode) h.parentNode.removeChild(h); });
+    tapHints = [];
   }
 
   // Manual raycasting for pit taps. More reliable inside a MindAR scene than the
@@ -242,7 +376,7 @@ window.Board = (function () {
   // Lifted well above the board/stores so nothing overlaps; the name labels are
   // glowing neon text matching each avatar's colour.
   function buildAvatars() {
-    var AVY = 0.66;   // height — kept below the viewport top so nothing clips
+    var AVY = 0.88;   // raised so the avatars + name chips clear the cyan board frame
     var AVX = 0.70;   // pulled inward from the board edge, leaving side margin
     var AVS = '0.85 0.85 0.85'; // slightly smaller so both fit fully on screen
 
@@ -251,14 +385,14 @@ window.Board = (function () {
     E('a-sphere', { radius: 0.05, position: '0 0 0', material: holo(BLUE, 0.85, 0.8) }, a);
     E('a-box', { depth: 0.06, height: 0.035, width: 0.12, position: '0 0.045 0', material: holo(BLUE, 0.85, 0.8) }, a);
     E('a-box', { depth: 0.05, height: 0.11, width: 0.16, position: '0 -0.115 0', material: holo(BLUE, 0.8, 0.7) }, a);
-    glowText(a, 'PLAYER A', BLUE, '0 -0.23 0', 1.6);
+    chipLabel(a, 'PLAYER A', BLUE, '0 -0.29 0.02', 0.66);
 
     // Player B — red, feminine: round head, long hair, triangular dress body.
     var b = E('a-entity', { position: AVX + ' ' + AVY + ' 0.02', scale: AVS }, anchor);
     E('a-sphere', { radius: 0.05, position: '0 0 0', material: holo(RED, 0.85, 0.8) }, b);
     E('a-box', { depth: 0.05, height: 0.12, width: 0.13, position: '0 -0.01 -0.01', material: holo(RED, 0.7, 0.6) }, b); // long hair behind
     E('a-cone', { 'radius-bottom': 0.09, 'radius-top': 0.015, height: 0.14, position: '0 -0.12 0', material: holo(RED, 0.8, 0.7) }, b);
-    glowText(b, 'PLAYER B', RED, '0 -0.23 0', 1.6);
+    chipLabel(b, 'PLAYER B', RED, '0 -0.29 0.02', 0.66);
   }
 
   // ---- rendering --------------------------------------------------------
@@ -292,37 +426,71 @@ window.Board = (function () {
   }
 
   // ---- highlighting -----------------------------------------------------
+  // Pending pulse() reset timers, one slot per pit/store. Tracked so that
+  // clearing/re-highlighting can cancel a still-pending "flash → dim" reset —
+  // otherwise a pit pulsed late during sowing would be dimmed AFTER it was
+  // re-highlighted, making some highlighted pits (often the 1-seed ones) look
+  // darker than the rest. Cancelling keeps every highlight uniformly bright.
+  var pulseTimers = [];
+
   function setHighlights(indices, player) {
     clearHighlights();
     indices.forEach(function (i) {
       var ring = rings[i];
       if (!ring) return;
-      ring.setAttribute('material', holo(sideColor(i), 1.0, 1.6));
+      // brightness-matched glow: blue and red end up equally vivid
+      ring.setAttribute('material', holo(hiColor(i), 1.0, hiGlow(i)));
       ring.setAttribute('animation__pulse',
         'property: scale; dir: alternate; loop: true; dur: 700; to: 1.18 1.18 1.18');
     });
   }
   function clearHighlights() {
+    hideTapHint();
     for (var i = 0; i <= 13; i++) {
+      if (pulseTimers[i]) { clearTimeout(pulseTimers[i]); pulseTimers[i] = null; }
       var ring = rings[i];
       if (!ring) continue;
       ring.removeAttribute('animation__pulse');
+      ring.removeAttribute('animation__pop');
+      ring.removeAttribute('animation__hit');
       var store = (i === 6 || i === 13);
       ring.setAttribute('scale', store ? '1 2.4 1' : '1 1 1');
       ring.setAttribute('material', holo(sideColor(i), 0.9, 0.6));
     }
   }
 
-  // brief glow pulse on a pit/store (used by the animation layer)
+  // Map a themed colour to its brightness-matched highlight variant (so an
+  // explicit blue/red pulse is as vivid as a side highlight; gold passes through).
+  function brightColor(c) {
+    if (c === RED) return HI_RED;
+    if (c === BLUE) return HI_BLUE;
+    return c;
+  }
+
+  // Brief but punchy highlight on a pit/store as the seed passes/lands: a bright
+  // emissive flash PLUS a quick scale "pop", so the eye can track each step of
+  // the sowing rhythm. Used by the animation layer on every surface. Blue and red
+  // flashes are brightness-matched, just like the steady highlights.
   function pulse(i, color) {
     var ring = rings[i];
     if (!ring) return;
-    var c = color || sideColor(i);
-    ring.setAttribute('material', holo(c, 1.0, 2.2));
+    var c, g;
+    if (color) { c = brightColor(color); g = (color === RED) ? 3.2 : 2.8; }
+    else { c = hiColor(i); g = hiGlow(i) + 0.8; }
+    var store = (i === 6 || i === 13);
+    var base = store ? '1 2.4 1' : '1 1 1';
+    var popped = store ? '1.4 3.2 1.4' : '1.4 1.4 1.4';
+    ring.setAttribute('material', holo(c, 1.0, g));
     ring.setAttribute('animation__hit',
-      'property: components.material.material.emissiveIntensity; from: 2.2; to: 0.6; dur: 600');
-    setTimeout(function () {
+      'property: components.material.material.emissiveIntensity; from: ' + g + '; to: 0.6; dur: 600');
+    ring.setAttribute('animation__pop',
+      'property: scale; from: ' + popped + '; to: ' + base + '; dur: 360; easing: easeOutCubic');
+    if (pulseTimers[i]) clearTimeout(pulseTimers[i]);
+    pulseTimers[i] = setTimeout(function () {
+      pulseTimers[i] = null;
       ring.removeAttribute('animation__hit');
+      ring.removeAttribute('animation__pop');
+      ring.setAttribute('scale', base);
       ring.setAttribute('material', holo(sideColor(i), 0.9, 0.6));
     }, 650);
   }
@@ -332,8 +500,16 @@ window.Board = (function () {
   // ---- reset between modules -------------------------------------------
   function reset() {
     clearHighlights();
+    hideTapHint();
     showArrows(false);
-    if (notif) notif.setAttribute('visible', false);
+    if (notif) notif.el.setAttribute('visible', false);
+  }
+
+  // Set the floating notification's text + accent colour, returns its plane el
+  // so the animation layer can scale/show/hide it.
+  function setNotif(text, color) {
+    notif.set(text, color || CYAN);
+    return notif.el;
   }
 
   function onPitClick(cb) { pitClickCb = cb; }
@@ -342,9 +518,11 @@ window.Board = (function () {
     POS: POS, BLUE: BLUE, RED: RED, GOLD: GOLD, CYAN: CYAN,
     build: build, renderState: renderState,
     setHighlights: setHighlights, clearHighlights: clearHighlights,
+    showTapHint: showTapHint, showTapHints: showTapHints, hideTapHint: hideTapHint,
     pulse: pulse, showArrows: showArrows, reset: reset,
     onPitClick: onPitClick,
     anchorEl: function () { return anchor; },
-    notifEl: function () { return notif; }
+    setNotif: setNotif,
+    notifEl: function () { return notif.el; }
   };
 })();
