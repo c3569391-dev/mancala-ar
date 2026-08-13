@@ -4,30 +4,30 @@
  * the immutable state + event log returned from applyMove().
  *
  * Board indexing (see SPEC §6):
- *   Pits 0–5   = Player A's pits      Pit 6  = Player A's store
- *   Pits 7–12  = Player B's pits      Pit 13 = Player B's store
- *   Sowing order: 0→1→…→12→13→0 (counter-clockwise)
- *   Player A skips 13; Player B skips 6.
- *   Opposite pit of i (for capture) = 12 - i
+ *   Pits 0–6   = Player A's pits      Pit 7  = Player A's store
+ *   Pits 8–14  = Player B's pits      Pit 15 = Player B's store
+ *   Sowing order: 0→1→…→14→15→0 (counter-clockwise)
+ *   Player A skips 15; Player B skips 7.
+ *   Opposite pit of i (for capture) = 14 - i
  */
 (function () {
   'use strict';
 
-  var A_PITS = [0, 1, 2, 3, 4, 5];
-  var B_PITS = [7, 8, 9, 10, 11, 12];
-  var A_STORE = 6;
-  var B_STORE = 13;
+  var A_PITS = [0, 1, 2, 3, 4, 5, 6];
+  var B_PITS = [8, 9, 10, 11, 12, 13, 14];
+  var A_STORE = 7;
+  var B_STORE = 15;
 
   function isStore(i) { return i === A_STORE || i === B_STORE; }
   function storeOf(player) { return player === 'A' ? A_STORE : B_STORE; }
   function pitsOf(player) { return player === 'A' ? A_PITS : B_PITS; }
-  function owns(player, i) { return player === 'A' ? (i >= 0 && i <= 5) : (i >= 7 && i <= 12); }
-  function opposite(i) { return 12 - i; }
+  function owns(player, i) { return player === 'A' ? (i >= 0 && i <= 6) : (i >= 8 && i <= 14); }
+  function opposite(i) { return 14 - i; }
   function other(player) { return player === 'A' ? 'B' : 'A'; }
 
   /** Fresh game: every pit holds 4 seeds, stores empty, Player A to move. */
   function createInitialState() {
-    var board = [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0];
+    var board = [4, 4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 4, 0];
     return { board: board, current: 'A', over: false, winner: null };
   }
 
@@ -44,9 +44,9 @@
 
   /** Next pit in sowing order, skipping the opponent's store. */
   function nextIndex(i, player) {
-    var n = (i + 1) % 14;
-    if (player === 'A' && n === B_STORE) n = (n + 1) % 14;
-    if (player === 'B' && n === A_STORE) n = (n + 1) % 14;
+    var n = (i + 1) % 16;
+    if (player === 'A' && n === B_STORE) n = (n + 1) % 16;
+    if (player === 'B' && n === A_STORE) n = (n + 1) % 16;
     return n;
   }
 

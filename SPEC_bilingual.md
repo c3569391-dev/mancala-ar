@@ -104,10 +104,13 @@
 
 ---
 
-## 6. Mancala Rules / 曼卡拉规则 (Kalah standard — implement exactly / 标准 Kalah,精确实现)
+## 6. Mancala Rules / 曼卡拉规则 (Kalah-style learning mechanics — implement exactly / Kalah 风格学习规则,精确实现)
+
+**EN:** The project keeps its existing Kalah-style learning mechanics while adapting the virtual board geometry to seven pits per side so it can correspond one-to-one with the physical Congkak board.
+**中:** 项目保留现有的 Kalah 风格学习规则,同时将虚拟棋盘调整为每方七个坑,以便与实体 Congkak 棋盘一一对应。
 
 **EN:**
-- Board: 2 rows of **6 pits** each + **2 stores** (one per player).
+- Board: 2 rows of **7 pits** each + **2 stores** (one per player).
 - Each pit starts with **4 seeds**.
 - Players: **Player A** (top, BLUE) and **Player B** (bottom, RED).
 - On a turn: take all seeds from one of YOUR pits, sow **one per pit, counter-clockwise**.
@@ -117,7 +120,7 @@
 - **Game End**: when **one player's whole row is empty**. The other player sweeps remaining seeds into their store. **Most seeds in store wins.**
 
 **中:**
-- 棋盘:2 行各 **6 个坑** + **2 个储存区**(每人一个)。
+- 棋盘:2 行各 **7 个坑** + **2 个储存区**(每人一个)。
 - 每坑初始 **4 颗种子**。
 - 玩家:**玩家 A**(上方,蓝)和**玩家 B**(下方,红)。
 - 轮到你:拿起你某坑全部种子,**逆时针逐坑各放一颗**。
@@ -128,13 +131,14 @@
 
 ### Board indexing / 棋盘索引 (for the engine / 供引擎使用)
 ```
-Pits 0–5   = Player A's pits / 玩家 A 的坑
-Pit  6     = Player A's store / 玩家 A 储存区
-Pits 7–12  = Player B's pits / 玩家 B 的坑
-Pit  13    = Player B's store / 玩家 B 储存区
-Sowing order / 播种顺序: 0→1→2→3→4→5→6→7→8→9→10→11→12→13→0 ...
-Player A skips 13; Player B skips 6. / A 跳过 13;B 跳过 6。
-Opposite pit of i (capture) / i 的正对面坑 = 12 - i
+Pits 0–6   = Player A's pits / 玩家 A 的坑
+Pit  7     = Player A's store / 玩家 A 储存区
+Pits 8–14  = Player B's pits / 玩家 B 的坑
+Pit  15    = Player B's store / 玩家 B 储存区
+Total board state length / 棋盘状态总长度: 16
+Sowing order / 播种顺序: 0→1→2→3→4→5→6→7→8→9→10→11→12→13→14→15→0 ...
+Player A skips 15; Player B skips 7. / A 跳过 15;B 跳过 7。
+Opposite pit of i (capture) / i 的正对面坑 = 14 - i
 ```
 
 ---

@@ -78,7 +78,7 @@ window.Modules = (function () {
     setPanel(
       '<h2>How to Play</h2>' +
       '<ul>' +
-      '<li><b>Board:</b> two rows of 6 pits, plus 2 stores (one per player).</li>' +
+      '<li><b>Board:</b> two rows of 7 pits, plus 2 stores (one per player).</li>' +
       '<li><b>Setup:</b> each pit starts with 4 seeds.</li>' +
       '<li><b>Sides:</b> Player A owns the blue top row and its store; Player B owns the red bottom row and its store.</li>' +
       '<li><b>Sowing:</b> on your turn, take all seeds from one of your own pits and drop one into each following pit, counter-clockwise.</li>' +
@@ -226,7 +226,7 @@ window.Modules = (function () {
     btn.classList.add(ok ? 'correct' : 'wrong');
     setPanel(
       '<h2 class="' + (ok ? 'cgold' : 'cred') + '">' + (ok ? 'Correct!' : 'Incorrect') + '</h2>' +
-      '<p>Player A\'s store holds <b>' + p.board[6] + '</b> seeds; Player B\'s store holds <b>' + p.board[13] + '</b>. ' +
+      '<p>Player A\'s store holds <b>' + p.board[7] + '</b> seeds; Player B\'s store holds <b>' + p.board[15] + '</b>. ' +
       'The player with the most seeds in their store wins, so <b>Player A wins</b>.</p>');
     appendBack(runQuiz1);
   }
@@ -288,7 +288,7 @@ window.Modules = (function () {
     setPanel(
       '<h2>Free Play</h2>' +
       '<p>Current turn: <b>' + side + '</b>. Tap one of your glowing pits to sow.</p>' +
-      '<p class="hint">Store A: <b class="cblue">' + game.board[6] + '</b> &middot; Store B: <b class="cred">' + game.board[13] + '</b></p>');
+      '<p class="hint">Store A: <b class="cblue">' + game.board[7] + '</b> &middot; Store B: <b class="cred">' + game.board[15] + '</b></p>');
   }
   async function playFreeMove(pit) {
     if (!Engine.legalMoves(game).includes(pit)) return;
@@ -307,7 +307,7 @@ window.Modules = (function () {
       setPanel(
         '<h2 class="cgold">Game Over</h2>' +
         '<p>' + msg + '</p>' +
-        '<p class="hint">Store A: <b class="cblue">' + game.board[6] + '</b> &middot; Store B: <b class="cred">' + game.board[13] + '</b></p>');
+        '<p class="hint">Store A: <b class="cblue">' + game.board[7] + '</b> &middot; Store B: <b class="cred">' + game.board[15] + '</b></p>');
       setOptions([{ label: 'Play Again', onClick: showFreePlay }]);
     } else {
       updateFreePlayStatus();

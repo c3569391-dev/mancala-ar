@@ -117,7 +117,7 @@ window.Animate = (function () {
     Board.pulse(ev.pit, Board.GOLD);
     Board.pulse(ev.opposite, Board.GOLD);
     await notify('Capture Triggered!', Board.CYAN);
-    var store = ev.player === 'A' ? 6 : 13;
+    var store = ev.player === 'A' ? 7 : 15;
     disp[store] += disp[ev.pit] + disp[ev.opposite];
     disp[ev.pit] = 0;
     disp[ev.opposite] = 0;
@@ -127,7 +127,7 @@ window.Animate = (function () {
   }
 
   async function animateExtraTurn(ev) {
-    var store = ev.player === 'A' ? 6 : 13;
+    var store = ev.player === 'A' ? 7 : 15;
     Board.pulse(store, ev.player === 'A' ? Board.BLUE : Board.RED);
     await notify('You Gain an Extra Turn!', Board.CYAN);
   }

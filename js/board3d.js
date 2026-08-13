@@ -29,21 +29,22 @@ window.Board = (function () {
   var ROWY = 0.20;        // top/bottom row height
   var STOREX = 0.82;      // store distance from centre
   var PITR = 0.062;       // pit ring radius
+  var COUNT_LABEL_GAP = 0.055; // space between a normal pit ring and its count
   var Z = 0.02;           // float seeds just above the board plane
-  // x positions for the 6 columns (pit 0 sits on the right; CCW top row goes R→L)
-  var COLX = [0.55, 0.33, 0.11, -0.11, -0.33, -0.55];
+  // x positions for the 7 columns (pit 0 sits on the right; CCW top row goes R→L)
+  var COLX = [0.60, 0.40, 0.20, 0, -0.20, -0.40, -0.60];
 
   var POS = [];           // POS[i] = {x,y,z} world-local centre of pit i
   (function buildPositions() {
-    for (var i = 0; i <= 5; i++) POS[i] = { x: COLX[i], y: ROWY, z: Z };          // A pits
-    POS[6] = { x: -STOREX, y: 0, z: Z };                                          // A store
-    for (var j = 0; j <= 5; j++) POS[7 + j] = { x: -COLX[j], y: -ROWY, z: Z };    // B pits
-    POS[13] = { x: STOREX, y: 0, z: Z };                                          // B store
+    for (var i = 0; i <= 6; i++) POS[i] = { x: COLX[i], y: ROWY, z: Z };          // A pits
+    POS[7] = { x: -STOREX, y: 0, z: Z };                                          // A store
+    for (var j = 0; j <= 6; j++) POS[8 + j] = { x: -COLX[j], y: -ROWY, z: Z };    // B pits
+    POS[15] = { x: STOREX, y: 0, z: Z };                                          // B store
   })();
 
   function sideColor(i) {
-    if (i >= 0 && i <= 6) return BLUE;   // Player A territory (pits 0-5 + store 6)
-    return RED;                          // Player B territory (pits 7-12 + store 13)
+    if (i >= 0 && i <= 7) return BLUE;   // Player A territory (pits 0-6 + store 7)
+    return RED;                          // Player B territory (pits 8-14 + store 15)
   }
 
   // ---- small entity helper ---------------------------------------------
@@ -216,8 +217,8 @@ window.Board = (function () {
       material: 'shader: flat; color: ' + RED + '; transparent: true; opacity: 0.10' }, anchor);
 
     // Pits + stores.
-    for (var i = 0; i <= 13; i++) {
-      if (i === 6 || i === 13) buildStore(i);
+    for (var i = 0; i <= 15; i++) {
+      if (i === 7 || i === 15) buildStore(i);
       else buildPit(i);
     }
 
@@ -329,7 +330,7 @@ window.Board = (function () {
     // hit-area / ring never clip it, and lifted clear of the ring.
     labels[i] = E('a-text', {
       value: '4', align: 'center', color: '#Eaffff', width: 1.4,
-      position: '0 ' + (PITR + 0.05) + ' 0.06'
+      position: '0 ' + (PITR + COUNT_LABEL_GAP) + ' 0.02'
     }, g);
 
     groups[i] = E('a-entity', { position: '0 0 0' }, g); // seeds container
@@ -358,7 +359,7 @@ window.Board = (function () {
   // Static CCW direction chevrons around the loop (brightened during demos).
   function buildArrows() {
     arrows = E('a-entity', { visible: 'false' }, anchor);
-    var order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+    var order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     for (var k = 0; k < order.length; k++) {
       var a = POS[order[k]], b = POS[order[(k + 1) % order.length]];
       var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -397,7 +398,7 @@ window.Board = (function () {
 
   // ---- rendering --------------------------------------------------------
   function renderState(board) {
-    for (var i = 0; i <= 13; i++) {
+    for (var i = 0; i <= 15; i++) {
       var g = groups[i];
       // remove old seeds
       var olds = g.querySelectorAll('.seed');
@@ -406,7 +407,7 @@ window.Board = (function () {
       var n = board[i];
       labels[i].setAttribute('value', String(n));
 
-      var store = (i === 6 || i === 13);
+      var store = (i === 7 || i === 15);
       var cap = store ? 24 : 14;
       var vis = Math.min(n, cap);
       var offs = seedOffsets(vis, store ? 0.030 : 0.024);
@@ -446,14 +447,14 @@ window.Board = (function () {
   }
   function clearHighlights() {
     hideTapHint();
-    for (var i = 0; i <= 13; i++) {
+    for (var i = 0; i <= 15; i++) {
       if (pulseTimers[i]) { clearTimeout(pulseTimers[i]); pulseTimers[i] = null; }
       var ring = rings[i];
       if (!ring) continue;
       ring.removeAttribute('animation__pulse');
       ring.removeAttribute('animation__pop');
       ring.removeAttribute('animation__hit');
-      var store = (i === 6 || i === 13);
+      var store = (i === 7 || i === 15);
       ring.setAttribute('scale', store ? '1 2.4 1' : '1 1 1');
       ring.setAttribute('material', holo(sideColor(i), 0.9, 0.6));
     }
@@ -477,7 +478,7 @@ window.Board = (function () {
     var c, g;
     if (color) { c = brightColor(color); g = (color === RED) ? 3.2 : 2.8; }
     else { c = hiColor(i); g = hiGlow(i) + 0.8; }
-    var store = (i === 6 || i === 13);
+    var store = (i === 7 || i === 15);
     var base = store ? '1 2.4 1' : '1 1 1';
     var popped = store ? '1.4 3.2 1.4' : '1.4 1.4 1.4';
     ring.setAttribute('material', holo(c, 1.0, g));

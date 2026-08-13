@@ -183,3 +183,75 @@ a-scene { position: fixed; inset: 0; z-index: 1; }
 @media (min-width: 520px) {
   #ui { max-width: 480px; margin: 0 auto; }
 }
+
+/* Compact phone landscape: keep the AR board's centre clear while placing
+   teaching text and controls along the lower edge. */
+@media (orientation: landscape) and (max-height: 600px) {
+  #ui {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  #topbar { align-items: flex-start; }
+  #topbar h1 { font-size: 16px; letter-spacing: 1.5px; }
+  #subtitle { margin-top: 2px; font-size: 8px; letter-spacing: 2px; }
+  #home-btn { font-size: 10px; padding: 6px 10px; border-radius: 8px; }
+
+  #bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.9fr);
+    grid-template-areas:
+      "panel options"
+      "panel nav";
+    align-items: end;
+    gap: 8px 12px;
+  }
+
+  #panel { grid-area: panel; }
+  #options { grid-area: options; }
+  #mainnav { grid-area: nav; }
+
+  .panel {
+    max-height: 34vh;
+    padding: 9px 12px;
+    border-radius: 12px;
+  }
+  .panel h2 { margin-bottom: 4px; font-size: 13px; }
+  .panel p { margin: 3px 0; font-size: 11.5px; line-height: 1.35; }
+  .panel ul { margin: 3px 0; padding-left: 16px; }
+  .panel li { margin: 2px 0; font-size: 11px; line-height: 1.35; }
+  .panel .hint { font-size: 10.5px; }
+
+  .options { gap: 6px; align-self: end; }
+  .opt {
+    min-width: 100px;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .opt.small { min-height: 36px; padding: 7px 8px; font-size: 11px; }
+  .retry-row { gap: 6px; }
+
+  #mainnav { gap: 6px; }
+  #mainnav button {
+    min-height: 42px;
+    padding: 8px 3px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+
+  #camera-hint {
+    top: 115px;
+    transform: translateX(-50%);
+    max-width: min(70vw, 420px);
+    padding: 12px 18px;
+    font-size: 12px;
+  }
+}

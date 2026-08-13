@@ -1,8 +1,9 @@
 # AR Mancala — Learning Assistant
 
-An AR-based learning tool that teaches the rules of Mancala (Kalah). Mobile web,
-opened via QR code, no install. Built with plain HTML/CSS/JS + A-Frame + MindAR
-image tracking (all via CDN — no build step).
+An AR-based learning tool that teaches Kalah-style Mancala mechanics on a
+seven-pit-per-side board matching Congkak geometry. Mobile web, opened via QR
+code, no install. Built with plain HTML/CSS/JS + A-Frame + MindAR image tracking
+(all via CDN — no build step).
 
 ## Architecture (two layers)
 
