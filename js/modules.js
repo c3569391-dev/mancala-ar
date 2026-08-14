@@ -109,6 +109,7 @@ window.Modules = (function () {
     var p = preset();
     demoState = Engine.stateFromBoard(p.board, p.current);
     demoHighlight = p.highlight[0];
+    if (window.InteractionDebug) window.InteractionDebug.setStage('DEMO READY PIT ' + demoHighlight);
     mode = newMode;
     Board.reset();
     Board.renderState(demoState.board);
@@ -136,6 +137,7 @@ window.Modules = (function () {
     Board.hideTapHint();
     var pre = demoState.board.slice();
     var res = Engine.applyMove(demoState, pit);
+    if (window.InteractionDebug) window.InteractionDebug.setStage('ENGINE DEMO EVENTS ' + res.events.length);
     await Animate.playEvents(res.events, pre, res.state.board);
     demoState = res.state;
     busy = false;
@@ -276,6 +278,7 @@ window.Modules = (function () {
   // ---- Free Play --------------------------------------------------------
   function showFreePlay() {
     mode = 'freeplay';
+    if (window.InteractionDebug) window.InteractionDebug.setStage('FREE PLAY READY');
     game = Engine.createInitialState();
     Board.reset();
     Board.renderState(game.board);
@@ -296,6 +299,7 @@ window.Modules = (function () {
     Board.clearHighlights();
     var pre = game.board.slice();
     var res = Engine.applyMove(game, pit);
+    if (window.InteractionDebug) window.InteractionDebug.setStage('ENGINE FREE EVENTS ' + res.events.length);
     await Animate.playEvents(res.events, pre, res.state.board);
     game = res.state;
     busy = false;
@@ -318,6 +322,7 @@ window.Modules = (function () {
   // ---- pit tap dispatch (wired to Board.onPitClick) ---------------------
   function onPitClicked(i) {
     if (busy) return;
+    if (window.InteractionDebug) window.InteractionDebug.setStage('MODULES PIT ' + i);
     if (mode === 'demoCapture' || mode === 'demoExtra') {
       if (i === demoHighlight) playDemo(i);
     } else if (mode === 'demoExtraManual') {
