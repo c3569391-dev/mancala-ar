@@ -53,6 +53,9 @@
 
     <!-- Image-target anchor (placeholder example .mind; swap for your board later). -->
     <a-entity id="target" mindar-image-target="targetIndex: 0">
+      <!-- TEMPORARY: isolates MindAR target rendering from Board.build(). -->
+      <a-box id="target-test-box" position="0 0 0.1" width="0.6" height="0.6" depth="0.08"
+             color="#00ff88"></a-box>
       <!-- Layer A board, scaled to roughly overlay the marker; floats just above it. -->
       <a-entity id="board-anchor" position="0 0 0.05" scale="0.55 0.55 0.55"></a-entity>
     </a-entity>
