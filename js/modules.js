@@ -17,6 +17,11 @@ window.Modules = (function () {
   var game = null;            // live Free Play state
   var busy = false;           // lock taps while an animation plays
 
+  function debug(method, value) {
+    var d = window.ARDebug;
+    if (d && d[method]) d[method](value);
+  }
+
   // ---- DOM helpers ------------------------------------------------------
   function $(id) { return document.getElementById(id); }
   function setPanel(html) {
@@ -45,6 +50,8 @@ window.Modules = (function () {
   // ---- router -----------------------------------------------------------
   function show(name) {
     if (busy) return;
+    debug('setModule', String(name).toUpperCase());
+    if (name === 'demo') debug('setDemoClick', 'NAV YES');
     Board.reset();
     setActiveNav(name);
     if (name === 'main') return showMain();
@@ -109,6 +116,7 @@ window.Modules = (function () {
     var p = preset();
     demoState = Engine.stateFromBoard(p.board, p.current);
     demoHighlight = p.highlight[0];
+    debug('setDemoClick', 'PRESET READY / PIT ' + demoHighlight);
     mode = newMode;
     Board.reset();
     Board.renderState(demoState.board);
@@ -132,10 +140,12 @@ window.Modules = (function () {
 
   async function playDemo(pit) {
     busy = true;
+    debug('setDemoClick', 'MOVE RECEIVED / PIT ' + pit);
     Board.clearHighlights();
     Board.hideTapHint();
     var pre = demoState.board.slice();
     var res = Engine.applyMove(demoState, pit);
+    debug('setDemoClick', 'ENGINE EVENTS ' + res.events.length);
     await Animate.playEvents(res.events, pre, res.state.board);
     demoState = res.state;
     busy = false;
@@ -276,6 +286,7 @@ window.Modules = (function () {
   // ---- Free Play --------------------------------------------------------
   function showFreePlay() {
     mode = 'freeplay';
+    debug('setFreeMove', 'WAITING FOR PIT');
     game = Engine.createInitialState();
     Board.reset();
     Board.renderState(game.board);
@@ -291,11 +302,16 @@ window.Modules = (function () {
       '<p class="hint">Store A: <b class="cblue">' + game.board[7] + '</b> &middot; Store B: <b class="cred">' + game.board[15] + '</b></p>');
   }
   async function playFreeMove(pit) {
-    if (!Engine.legalMoves(game).includes(pit)) return;
+    if (!Engine.legalMoves(game).includes(pit)) {
+      debug('setFreeMove', 'REJECTED PIT ' + pit);
+      return;
+    }
+    debug('setFreeMove', 'RECEIVED PIT ' + pit);
     busy = true;
     Board.clearHighlights();
     var pre = game.board.slice();
     var res = Engine.applyMove(game, pit);
+    debug('setFreeMove', 'ENGINE EVENTS ' + res.events.length);
     await Animate.playEvents(res.events, pre, res.state.board);
     game = res.state;
     busy = false;
@@ -320,6 +336,7 @@ window.Modules = (function () {
     if (busy) return;
     if (mode === 'demoCapture' || mode === 'demoExtra') {
       if (i === demoHighlight) playDemo(i);
+      else debug('setDemoClick', 'IGNORED PIT ' + i);
     } else if (mode === 'demoExtraManual') {
       if (demoMoves.indexOf(i) >= 0) playExtraTurnManual(i);
     } else if (mode === 'freeplay') {
