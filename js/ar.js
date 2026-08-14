@@ -34,6 +34,55 @@ window.AR = (function () {
 
   var HINT_SCAN = 'Point your camera at the Mancala board';
   var HINT_ERR = 'Camera unavailable — allow camera access and reload';
+  var VIEWPORT_SETTLE_MS = 500;
+  var resizeTimer = null;
+  var resizeListenersBound = false;
+
+  function settledViewportSize() {
+    var viewport = window.visualViewport;
+    return {
+      width: viewport && viewport.width ? viewport.width : window.innerWidth,
+      height: viewport && viewport.height ? viewport.height : window.innerHeight
+    };
+  }
+
+  function syncArDimensions(scene) {
+    var size = settledViewportSize();
+    if (!size.width || !size.height || !scene.renderer) return;
+
+    var canvas = scene.canvas || scene.renderer.domElement;
+    if (canvas) {
+      canvas.style.width = size.width + 'px';
+      canvas.style.height = size.height + 'px';
+    }
+    scene.renderer.setSize(size.width, size.height, false);
+
+    var system = scene.systems && scene.systems['mindar-image-system'];
+    if (system && system.video && system.controller && typeof system._resize === 'function') {
+      system._resize();
+    }
+
+    if (scene.camera) {
+      scene.camera.aspect = size.width / size.height;
+      scene.camera.updateProjectionMatrix();
+    }
+  }
+
+  function scheduleDimensionSync(scene) {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      resizeTimer = null;
+      syncArDimensions(scene);
+    }, VIEWPORT_SETTLE_MS);
+  }
+
+  function bindResizeListeners(scene) {
+    if (resizeListenersBound) return;
+    resizeListenersBound = true;
+    scene.addEventListener('arReady', function () { scheduleDimensionSync(scene); });
+    window.addEventListener('resize', function () { scheduleDimensionSync(scene); });
+    window.addEventListener('orientationchange', function () { scheduleDimensionSync(scene); });
+  }
 
   function init() {
     var scene = document.querySelector('a-scene');
@@ -51,6 +100,7 @@ window.AR = (function () {
 
     // MindAR fires arError if the camera can't start (denied/blocked/no device).
     scene.addEventListener('arError', function () { showHint(HINT_ERR); });
+    bindResizeListeners(scene);
   }
 
   return { init: init };
