@@ -1,11 +1,11 @@
 /*
- * ar.js — Thin wrapper around AR.js marker events.
+ * ar.js — Thin wrapper around AR.js NFT image-target events.
  * Keeps AR tracking concerns separate from game/module logic.
  */
 window.AR = (function () {
   'use strict';
 
-  var HINT_SCAN = 'Point your camera at the Hiro marker';
+  var HINT_SCAN = 'Point your camera at the Congkak marker';
   var HINT_ERR = 'Camera unavailable — check permissions and reload';
 
   function init(scene) {
