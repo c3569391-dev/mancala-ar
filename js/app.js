@@ -42,9 +42,6 @@
     document.querySelectorAll('#mainnav button').forEach(function (button) {
       button.addEventListener('click', function () { Modules.show(button.dataset.module); });
     });
-    var home = document.getElementById('home-btn');
-    if (home) home.addEventListener('click', function () { Modules.show('main'); });
-
     Modules.show('main');
     if (isPreview()) enterPreview(scene);
   }
