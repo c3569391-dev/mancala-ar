@@ -48,14 +48,7 @@ window.AR = (function () {
 
   function syncArDimensions(scene) {
     var size = settledViewportSize();
-    if (!size.width || !size.height || !scene.renderer) return;
-
-    var canvas = scene.canvas || scene.renderer.domElement;
-    if (canvas) {
-      canvas.style.width = size.width + 'px';
-      canvas.style.height = size.height + 'px';
-    }
-    scene.renderer.setSize(size.width, size.height, false);
+    if (!size.width || !size.height) return;
 
     var system = scene.systems && scene.systems['mindar-image-system'];
     if (system && system.video && system.controller && typeof system._resize === 'function') {
