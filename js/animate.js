@@ -141,7 +141,6 @@ window.Animate = (function () {
    * `finalBoard` = authoritative board after the move (snapped to at the end).
    */
   async function playEvents(events, preBoard, finalBoard) {
-    if (window.InteractionDebug) window.InteractionDebug.setStage('ANIMATE EVENTS ' + events.length);
     var disp = preBoard.slice();
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];

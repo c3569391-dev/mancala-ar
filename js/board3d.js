@@ -1,50 +1,4 @@
 /*
- * Temporary, focused phone diagnostic for the pit-picking boundary. It compares
- * the existing raycast with the same raycast after a world-matrix refresh.
- */
-window.InteractionDebug = (function () {
-  'use strict';
-
-  var state = {
-    input: 'WAITING', canvas: '—', ndc: '—', targets: '—',
-    hits: '—', nearest: '—', stage: 'WAITING'
-  };
-  var overlay = null;
-
-  function render() {
-    if (!overlay) {
-      overlay = document.createElement('pre');
-      overlay.id = 'interaction-debug';
-      overlay.style.cssText =
-        'position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:9999;' +
-        'width:min(440px,64vw);margin:0;padding:5px 8px;pointer-events:none;' +
-        'white-space:pre-wrap;font:600 9px/1.25 monospace;color:#dffcff;' +
-        'background:rgba(2,8,16,.84);border:1px solid rgba(61,240,255,.7);' +
-        'border-radius:6px;box-shadow:0 0 8px rgba(61,240,255,.35)';
-      document.body.appendChild(overlay);
-    }
-    overlay.textContent =
-      'INPUT: ' + state.input + '\n' +
-      'CANVAS: ' + state.canvas + '\n' +
-      'NDC: ' + state.ndc + '\n' +
-      'TARGETS: ' + state.targets + '\n' +
-      'HITS: ' + state.hits + '\n' +
-      'NEAREST: ' + state.nearest + '\n' +
-      'STAGE: ' + state.stage;
-  }
-
-  function update(values) {
-    Object.keys(values || {}).forEach(function (key) { state[key] = String(values[key]); });
-    render();
-  }
-
-  return {
-    update: update,
-    setStage: function (value) { update({ stage: value }); }
-  };
-})();
-
-/*
  * board3d.js — Layer A visuals (the holographic Mancala board) built with
  * A-Frame entities under a single anchor. In Stage 2 the anchor is fixed at
  * the scene origin; in Stage 4 the same anchor becomes a MindAR image target,
@@ -75,6 +29,9 @@ window.Board = (function () {
   var ROWY = 0.20;        // top/bottom row height
   var STOREX = 0.82;      // store distance from centre
   var PITR = 0.062;       // pit ring radius
+  var PIT_HIT_RADIUS = PITR + 0.025;
+  var MIN_TOUCH_RADIUS_PX = 28;
+  var MAX_TOUCH_RADIUS_PX = 72;
   var COUNT_LABEL_GAP = 0.055; // space between a normal pit ring and its count
   var Z = 0.02;           // float seeds just above the board plane
   // x positions for the 7 columns (pit 0 sits on the right; CCW top row goes R→L)
@@ -231,7 +188,7 @@ window.Board = (function () {
   var notif = null;       // floating notification text
   var tapHints = [];      // "TAP" arrows, one per pit the learner may tap
   var pitClickCb = null;
-  var clickables = [];    // pit hit-areas, raycast manually for taps
+  var pitTargets = [];    // normal pit centres used for screen-space picking
 
   // ---- seed layout ------------------------------------------------------
   function seedOffsets(n, spread) {
@@ -315,94 +272,72 @@ window.Board = (function () {
     tapHints = [];
   }
 
-  // Manual raycasting for pit taps. More reliable inside a MindAR scene than the
-  // A-Frame cursor, and it correctly ignores taps that the Layer B UI consumes
-  // (those never reach the canvas).
+  // Pick the nearest projected pit centre. AR.js supplies a projection that
+  // renders tracked content correctly, but Three.js ray unprojection does not
+  // reliably intersect the marker-attached, coplanar hit meshes on iOS. Forward
+  // projection uses the same live tracked pose that is visibly rendering.
   function setupClicking() {
     var sceneEl = anchor.sceneEl;
     var THREE = window.AFRAME.THREE;
-    var raycaster = new THREE.Raycaster();
-    var ndc = new THREE.Vector2();
+
+    function isEffectivelyVisible(object) {
+      for (var node = object; node; node = node.parent) {
+        if (!node.visible) return false;
+      }
+      return true;
+    }
+
+    function screenPoint(object, localPoint, cam, rect) {
+      var point = localPoint.clone();
+      object.localToWorld(point);
+      point.project(cam);
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y) ||
+          !Number.isFinite(point.z) || point.z < -1 || point.z > 1) return null;
+      return {
+        x: rect.left + (point.x + 1) * rect.width / 2,
+        y: rect.top + (1 - point.y) * rect.height / 2
+      };
+    }
 
     function pick(clientX, clientY) {
       var canvas = sceneEl.canvas, cam = sceneEl.camera;
-      if (!pitClickCb || !canvas || !cam) {
-        window.InteractionDebug.setStage('BLOCKED: MISSING CALLBACK/CANVAS/CAMERA');
-        return;
-      }
+      if (!pitClickCb || !canvas || !cam || !isEffectivelyVisible(anchor.object3D)) return;
       var rect = canvas.getBoundingClientRect();
-      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(ndc, cam);
-
-      var objs = clickables.map(function (e) { return e.object3D; });
-      var meshCount = 0;
-      objs.forEach(function (object) {
-        object.traverse(function (child) { if (child.isMesh) meshCount += 1; });
-      });
-      var hitsBefore = raycaster.intersectObjects(objs, true);
-
-      // Diagnostic comparison only: selection below still uses hitsBefore, so
-      // this does not silently turn the matrix refresh into an unproven fix.
-      sceneEl.object3D.updateMatrixWorld(true);
-      cam.updateMatrixWorld(true);
-      raycaster.setFromCamera(ndc, cam);
-      var hitsAfter = raycaster.intersectObjects(objs, true);
+      if (!rect.width || !rect.height) return;
 
       var nearestPit = -1;
       var nearestDistance = Infinity;
-      clickables.forEach(function (el) {
-        var point = new THREE.Vector3();
-        el.object3D.getWorldPosition(point);
-        point.project(cam);
-        var screenX = rect.left + (point.x + 1) * rect.width / 2;
-        var screenY = rect.top + (1 - point.y) * rect.height / 2;
-        var distance = Math.hypot(clientX - screenX, clientY - screenY);
-        if (Number.isFinite(distance) && distance < nearestDistance) {
+      var nearestThreshold = 0;
+      pitTargets.forEach(function (el) {
+        var object = el.object3D;
+        var center = screenPoint(object, new THREE.Vector3(0, 0, 0), cam, rect);
+        var edgeX = screenPoint(object, new THREE.Vector3(PIT_HIT_RADIUS, 0, 0), cam, rect);
+        var edgeY = screenPoint(object, new THREE.Vector3(0, PIT_HIT_RADIUS, 0), cam, rect);
+        if (!center || !edgeX || !edgeY) return;
+
+        var radiusX = Math.hypot(edgeX.x - center.x, edgeX.y - center.y);
+        var radiusY = Math.hypot(edgeY.x - center.x, edgeY.y - center.y);
+        var projectedRadius = Math.max(radiusX, radiusY);
+        var threshold = Math.max(MIN_TOUCH_RADIUS_PX,
+          Math.min(MAX_TOUCH_RADIUS_PX, projectedRadius * 1.15));
+        var distance = Math.hypot(clientX - center.x, clientY - center.y);
+        if (distance < nearestDistance) {
           nearestDistance = distance;
           nearestPit = el.__pitIndex;
+          nearestThreshold = threshold;
         }
       });
 
-      window.InteractionDebug.update({
-        canvas: Math.round(rect.left) + ',' + Math.round(rect.top) + ' ' +
-          Math.round(rect.width) + 'x' + Math.round(rect.height),
-        ndc: ndc.x.toFixed(3) + ',' + ndc.y.toFixed(3),
-        targets: clickables.length + ' / MESHES ' + meshCount +
-          ' / CAMERA ' + (cam === sceneEl.camera ? 'ACTIVE' : 'STALE'),
-        hits: 'BEFORE ' + hitsBefore.length + ' / AFTER UPDATE ' + hitsAfter.length,
-        nearest: nearestPit < 0 ? 'NONE' : 'PIT ' + nearestPit + ' @ ' +
-          Math.round(nearestDistance) + 'px',
-        stage: hitsBefore.length ? 'RAYCAST HIT' : 'RAYCAST MISS'
-      });
-
-      if (!hitsBefore.length) return;
-
-      var hitObj = hitsBefore[0].object, idx = -1;
-      for (var c = 0; c < clickables.length && idx < 0; c++) {
-        var root = clickables[c].object3D, n = hitObj;
-        while (n) { if (n === root) { idx = clickables[c].__pitIndex; break; } n = n.parent; }
-      }
-      if (idx >= 0) {
-        window.InteractionDebug.setStage('BOARD CALLBACK PIT ' + idx);
-        pitClickCb(idx);
-      }
+      if (nearestPit >= 0 && nearestDistance <= nearestThreshold) pitClickCb(nearestPit);
     }
 
     function attach() {
       var canvas = sceneEl.canvas;
       if (!canvas) { setTimeout(attach, 100); return; }
-      window.addEventListener('pointerup', function (e) {
-        window.InteractionDebug.update({
-          input: 'POINTERUP ' + Math.round(e.clientX) + ',' + Math.round(e.clientY) +
-            ' TARGET ' + (e.target === sceneEl.canvas ? 'CANVAS' : e.target.tagName)
-        });
-      }, true);
       canvas.addEventListener('pointerup', function (e) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         pick(e.clientX, e.clientY);
       });
-      window.InteractionDebug.setStage('LISTENER ATTACHED');
     }
     if (sceneEl.hasLoaded) attach(); else sceneEl.addEventListener('loaded', attach);
   }
@@ -419,13 +354,8 @@ window.Board = (function () {
       material: 'shader: flat; color: ' + c + '; transparent: true; opacity: 0.12' }, g);
     rings[i] = ring;
 
-    // invisible larger hit-area for tapping (raycast manually in setupClicking)
-    var hit = E('a-circle', {
-      radius: PITR + 0.025, position: '0 0 0.03', class: 'clickable',
-      material: 'shader: flat; transparent: true; opacity: 0; side: double'
-    }, g);
-    hit.__pitIndex = i;
-    clickables.push(hit);
+    g.__pitIndex = i;
+    pitTargets.push(g);
 
     // count label above the pit — rendered in FRONT (high z) so the transparent
     // hit-area / ring never clip it, and lifted clear of the ring.
