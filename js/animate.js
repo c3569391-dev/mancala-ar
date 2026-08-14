@@ -141,7 +141,6 @@ window.Animate = (function () {
    * `finalBoard` = authoritative board after the move (snapped to at the end).
    */
   async function playEvents(events, preBoard, finalBoard) {
-    if (window.ARDebug) window.ARDebug.setAnimate('CALLED / EVENTS ' + events.length);
     var disp = preBoard.slice();
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
@@ -152,7 +151,6 @@ window.Animate = (function () {
     }
     Board.showArrows(false);
     if (finalBoard) Board.renderState(finalBoard);
-    if (window.ARDebug) window.ARDebug.setAnimate('COMPLETE / EVENTS ' + events.length);
   }
 
   return { playEvents: playEvents, notify: notify, sleep: sleep };

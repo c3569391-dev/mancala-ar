@@ -280,10 +280,7 @@ window.Board = (function () {
 
     function pick(clientX, clientY) {
       var canvas = sceneEl.canvas, cam = sceneEl.camera;
-      if (!pitClickCb || !canvas || !cam) {
-        if (window.ARDebug) window.ARDebug.setPit('BLOCKED / MISSING INPUT');
-        return;
-      }
+      if (!pitClickCb || !canvas || !cam) return;
       var rect = canvas.getBoundingClientRect();
       ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
@@ -291,30 +288,23 @@ window.Board = (function () {
 
       var objs = clickables.map(function (e) { return e.object3D; });
       var hits = raycaster.intersectObjects(objs, true);
-      if (!hits.length) {
-        if (window.ARDebug) window.ARDebug.setPit('RAYCAST MISS');
-        return;
-      }
+      if (!hits.length) return;
 
       var hitObj = hits[0].object, idx = -1;
       for (var c = 0; c < clickables.length && idx < 0; c++) {
         var root = clickables[c].object3D, n = hitObj;
         while (n) { if (n === root) { idx = clickables[c].__pitIndex; break; } n = n.parent; }
       }
-      if (idx >= 0) {
-        if (window.ARDebug) window.ARDebug.setPit('CALLBACK PIT ' + idx);
-        pitClickCb(idx);
-      }
+      if (idx >= 0) pitClickCb(idx);
     }
 
     function attach() {
       var canvas = sceneEl.canvas;
       if (!canvas) { setTimeout(attach, 100); return; }
-      canvas.addEventListener('click', function (e) {
-        if (window.ARDebug) window.ARDebug.setPit('CANVAS CLICK');
+      canvas.addEventListener('pointerup', function (e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         pick(e.clientX, e.clientY);
       });
-      if (window.ARDebug) window.ARDebug.setPit('LISTENER ATTACHED');
     }
     if (sceneEl.hasLoaded) attach(); else sceneEl.addEventListener('loaded', attach);
   }
