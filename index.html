@@ -10,10 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Audiowide&family=Exo+2:wght@400;600;700&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet" />
 
-  <!-- A-Frame + MindAR image tracking (CDN, no build step) -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <script src="js/mindar-landscape-compat.js"></script>
+  <!-- A-Frame loads now; app.js loads the pinned AR.js marker build only
+       after a landscape ENTER press so the webcam cannot start early. -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
 
   <link rel="stylesheet" href="css/theme.css?v=20260603" />
   <link rel="stylesheet" href="css/ui.css?v=20260603" />
@@ -29,38 +28,44 @@
       <h1 class="splash-title">AR Mancala<br />Learning Assistant</h1>
       <p class="splash-tagline">Learn Congkak with Augmented Reality</p>
       <button id="start-btn">ENTER</button>
-      <p class="splash-note">Tap ENTER, then point your camera at the Congkak card</p>
+      <p class="splash-note">Tap ENTER, then point your camera at the Hiro marker</p>
     </div>
   </div>
 
-  <!-- ================= Layer A: AR scene (holographic board) =================
-       MindAR provides the camera feed + image tracking. The #board-anchor lives
-       INSIDE the image target, so the whole holographic board is anchored to and
-       moves with the physical Mancala board. MindAR shows the target subtree only
-       while the marker is tracked, which hides Layer A automatically when lost.
-       (No background colour, so the live camera shows through.) -->
-  <a-scene embedded
-           mindar-image="imageTargetSrc: assets/targets.mind; maxTrack: 1; autoStart: false; uiLoading: no; uiScanning: no; uiError: no"
-           color-space="sRGB"
-           vr-mode-ui="enabled: false"
-           device-orientation-permission-ui="enabled: false"
-           renderer="alpha: true; colorManagement: true; antialias: true">
+  <!-- ================= Layer A: Stage 1 AR.js tracking proof =================
+       The template is inert until app.js creates the scene after a landscape
+       ENTER press. AR.js tracks the official Hiro marker. The Mancala board is
+       deliberately not attached to the marker during this controlled test. -->
+  <div id="ar-scene-host">
+    <template id="ar-scene-template"
+              data-arjs-src="https://raw.githack.com/AR-js-org/AR.js/3.4.8/aframe/build/aframe-ar.js">
+      <a-scene embedded
+               arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false"
+               color-space="sRGB"
+               vr-mode-ui="enabled: false"
+               device-orientation-permission-ui="enabled: false"
+               renderer="alpha: true; colorManagement: true; antialias: true; precision: medium">
 
-    <!-- AR camera (pose driven by MindAR). Pit taps are raycast manually in board3d.js. -->
-    <a-camera position="0 0 0" look-controls="false" wasd-controls="false"></a-camera>
+        <a-entity light="type: ambient; color: #bcd8ff; intensity: 0.95"></a-entity>
+        <a-entity light="type: point; intensity: 0.6; distance: 8" position="0 1 1.5"></a-entity>
 
-    <a-entity light="type: ambient; color: #bcd8ff; intensity: 0.95"></a-entity>
-    <a-entity light="type: point; intensity: 0.6; distance: 8" position="0 0.4 1.5"></a-entity>
+        <!-- TEMPORARY: Stage 1 proof independent of Board.build(). -->
+        <a-marker id="target" preset="hiro" emitevents="true">
+          <a-box id="target-test-box"
+                 position="0 0.22 0"
+                 width="0.65" height="0.4" depth="0.65"
+                 material="color: #00ff88; emissive: #00ff88; emissiveIntensity: 0.35">
+          </a-box>
+        </a-marker>
 
-    <!-- Image-target anchor (placeholder example .mind; swap for your board later). -->
-    <a-entity id="target" mindar-image-target="targetIndex: 0">
-      <!-- TEMPORARY: isolates MindAR target rendering from Board.build(). -->
-      <a-box id="target-test-box" position="0 0 0.1" width="0.6" height="0.6" depth="0.08"
-             color="#00ff88"></a-box>
-      <!-- Layer A board, scaled to roughly overlay the marker; floats just above it. -->
-      <a-entity id="board-anchor" position="0 0 0.05" scale="0.55 0.55 0.55"></a-entity>
-    </a-entity>
-  </a-scene>
+        <!-- Kept for module compatibility, but not marker-attached in Stage 1. -->
+        <a-entity id="board-anchor" position="0 0 0.05" scale="0.55 0.55 0.55"
+                  visible="false"></a-entity>
+
+        <a-entity camera></a-entity>
+      </a-scene>
+    </template>
+  </div>
 
   <!-- ================= Layer B: screen-fixed UI ================= -->
   <div id="ui">
@@ -73,7 +78,7 @@
     </header>
 
     <!-- Shown while scanning / when the AR target is lost. -->
-    <div id="camera-hint">Point your camera at the Mancala board</div>
+    <div id="camera-hint">Point your camera at the Hiro marker</div>
 
     <div id="bottom">
       <div id="panel" class="panel"></div>
@@ -93,7 +98,7 @@
   <script src="js/board3d.js?v=20260610c"></script>
   <script src="js/animate.js?v=20260610b"></script>
   <script src="js/modules.js?v=20260609b"></script>
-  <script src="js/ar.js?v=20260603"></script>
-  <script src="js/app.js?v=20260609"></script>
+  <script src="js/ar.js?v=20260814"></script>
+  <script src="js/app.js?v=20260814"></script>
 </body>
 </html>
