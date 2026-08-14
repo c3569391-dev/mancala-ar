@@ -61,11 +61,6 @@ window.AR = (function () {
     if (system && system.video && system.controller && typeof system._resize === 'function') {
       system._resize();
     }
-
-    if (scene.camera) {
-      scene.camera.aspect = size.width / size.height;
-      scene.camera.updateProjectionMatrix();
-    }
   }
 
   function scheduleDimensionSync(scene) {
