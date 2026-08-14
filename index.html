@@ -32,10 +32,10 @@
     </div>
   </div>
 
-  <!-- ================= Layer A: Stage 1 AR.js tracking proof =================
+  <!-- ================= Layer A: Stage 2 AR.js board rendering test ===========
        The template is inert until app.js creates the scene after a landscape
-       ENTER press. AR.js tracks the official Hiro marker. The Mancala board is
-       deliberately not attached to the marker during this controlled test. -->
+       ENTER press. AR.js tracks the official Hiro marker, and the existing
+       Mancala board anchor follows that marker. -->
   <div id="ar-scene-host">
     <template id="ar-scene-template"
               data-arjs-src="https://raw.githack.com/AR-js-org/AR.js/3.4.8/aframe/build/aframe-ar.js">
@@ -49,18 +49,10 @@
         <a-entity light="type: ambient; color: #bcd8ff; intensity: 0.95"></a-entity>
         <a-entity light="type: point; intensity: 0.6; distance: 8" position="0 1 1.5"></a-entity>
 
-        <!-- TEMPORARY: Stage 1 proof independent of Board.build(). -->
         <a-marker id="target" preset="hiro" emitevents="true">
-          <a-box id="target-test-box"
-                 position="0 0.22 0"
-                 width="0.65" height="0.4" depth="0.65"
-                 material="color: #00ff88; emissive: #00ff88; emissiveIntensity: 0.35">
-          </a-box>
+          <!-- Existing board geometry; transform remains uncalibrated in Stage 2. -->
+          <a-entity id="board-anchor" position="0 0 0.05" scale="0.55 0.55 0.55"></a-entity>
         </a-marker>
-
-        <!-- Kept for module compatibility, but not marker-attached in Stage 1. -->
-        <a-entity id="board-anchor" position="0 0 0.05" scale="0.55 0.55 0.55"
-                  visible="false"></a-entity>
 
         <a-entity camera></a-entity>
       </a-scene>
